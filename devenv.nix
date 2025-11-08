@@ -5,11 +5,16 @@
   inputs,
   ...
 }: {
-  # https://devenv.sh/basics/
-  env.GREET = "devenv";
+  cachix.enable = false;
 
   # https://devenv.sh/packages/
-  packages = [pkgs.git];
+  packages = with pkgs; [
+    git
+    tailwindcss-language-server
+    # For vscode-html-language-server and vscode-css-language-server
+    vscode-langservers-extracted
+    hyperfine
+  ];
 
   # https://devenv.sh/languages/
   languages.javascript = {
@@ -25,13 +30,8 @@
   # services.postgres.enable = true;
 
   # https://devenv.sh/scripts/
-  scripts.hello.exec = ''
-    echo hello from $GREET
-  '';
-
   # https://devenv.sh/basics/
   enterShell = ''
-    hello         # Run scripts directly
     git --version # Use packages
   '';
 

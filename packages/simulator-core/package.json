@@ -1,0 +1,13 @@
+{
+  "name": "@reonic/simulator-core",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "esm-seedrandom": "3.0.5-esm.2"
+  }
+}

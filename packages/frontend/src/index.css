@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	--color-background: var(--color-white);
+	--color-foreground: var(--color-black);
+
+	--color-card: var(--color-white);
+	--color-card-foreground: var(--color-black);
+
+	--color-popover: var(--color-white);
+	--color-popover-foreground: var(--color-black);
+
+	--color-primary: var(--color-sky-500);
+	--color-primary-foreground: var(--color-white);
+	--color-primary-hover: var(--color-sky-800);
+	--color-secondary: var(--color-gray-200);
+	--color-secondary-foreground: var(--color-gray-800);
+	--color-muted: var(--color-gray-800);
+	--color-muted-foreground: var(--color-gray-500);
+	--color-accent: var(--color-emerald-500);
+	--color-accent-foreground: var(--color-white);
+	--color-destructive: var(--color-red-400);
+	--color-destructive-foreground: var(--color-white);
+	--color-success: var(--color-green-500);
+	--color-success-foreground: var(--color-white);
+	--color-warning: var(--color-amber-400);
+	--color-warning-foreground: var(--color-white);
+	--color-border: var(--color-gray-200);
+	--color-input: var(--color-gray-200);
+	--color-ring: var(--color-sky-500);
+}
+
+@layer base {
+	:root {
+		--radius: 0.5rem;
+
+		--gradient-primary: linear-gradient(135deg, hsl(195 85% 45%) 0%, hsl(180 75% 50%) 100%);
+		--gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 20% 99%) 100%);
+		--shadow-card: 0 2px 8px -2px hsl(215 25% 15% / 0.08), 0 4px 16px -4px hsl(215 25% 15% / 0.04);
+		--shadow-hover: 0 4px 12px -2px hsl(215 25% 15% / 0.12), 0 8px 24px -4px hsl(215 25% 15% / 0.08);
+	}
+
+	@variant dark {
+		--color-background: var(--color-gray-900);
+		--color-foreground: var(--color-white);
+
+		--color-card: var(--color-gray-800);
+		--color-card-foreground: var(--color-white);
+
+		--color-popover: var(--color-gray-800);
+		--color-popover-foreground: var(--color-white);
+
+		--color-primary: var(--color-sky-500);
+		--color-primary-foreground: var(--color-white);
+		--color-primary-hover: var(--color-sky-800);
+		--color-secondary: var(--color-gray-500);
+		--color-secondary-foreground: var(--color-white);
+		--color-muted: var(--color-gray-800);
+		--color-muted-foreground: var(--color-gray-200);
+		--color-accent: var(--color-emerald-500);
+		--color-accent-foreground: var(--color-white);
+		--color-destructive: var(--color-red-400);
+		--color-destructive-foreground: var(--color-white);
+		--color-success: var(--color-green-500);
+		--color-success-foreground: var(--color-white);
+		--color-warning: var(--color-amber-400);
+		--color-warning-foreground: var(--color-white);
+		--color-border: var(--color-gray-700);
+		--color-input: var(--color-gray-700);
+		--color-ring: var(--color-sky-500);
+
+		--shadow-card: 0 2px 8px -2px hsl(0 0% 0% / 0.3), 0 4px 16px -4px hsl(0 0% 0% / 0.2);
+		--shadow-hover: 0 4px 12px -2px hsl(0 0% 0% / 0.4), 0 8px 24px -4px hsl(0 0% 0% / 0.3);
+	}
+}
+
+@layer base {
+	:root {
+		@apply bg-background text-foreground antialiased;
+		color-scheme: light dark;
+	}
+}
+
+@layer utilities {
+	.shadow-card {
+		box-shadow: var(--shadow-card);
+	}
+
+	.shadow-hover {
+		box-shadow: var(--shadow-hover);
+	}
+
+	.transition-smooth {
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+}

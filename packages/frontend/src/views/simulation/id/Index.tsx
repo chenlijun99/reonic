@@ -11,7 +11,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PowerChart } from '@/components/PowerChart';
 import { ChargingEventsChart } from '@/components/ChargingEventsChart';
-import { useSimulationResultDateRangeFilter } from '@/components/SimulationResultDateRangeFilter';
+import {
+  SimulationResultDateRangeFilter,
+  useSimulationResultDateRangeFilter,
+} from '@/components/SimulationResultDateRangeFilter';
 
 const Index = () => {
   const { theme } = useTheme();
@@ -59,79 +62,89 @@ const Index = () => {
   const statistics = computeStatistics(simulation.config, filteredTickData);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold bg-clip-text">
-          Results for: {simulation.config.name}
-        </h2>
+    <>
+      <div className="p-4 border-b border-border bg-card shadow-card">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-card-foreground">
+            Date Range:
+          </span>
+          <SimulationResultDateRangeFilter />
+        </div>
       </div>
+      <div className="space-y-6 p-8">
+        <div>
+          <h2 className="text-2xl font-bold bg-clip-text">
+            Results for: {simulation.config.name}
+          </h2>
+        </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Energy Consumed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">
-              {statistics.totalEnergy.toFixed(1)}
-              <span className="text-sm font-normal text-muted-foreground ml-1">
-                kWh
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Charging Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">
-              {filteredChargeEvents.length}
-              <span className="text-sm font-normal text-muted-foreground ml-1">
-                events
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Peak Power & Concurrency
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-card-foreground">
-              {statistics.actualMaxPower} kW / {statistics.theoreticalMaxPower}{' '}
-              kW
-              <div className="text-2xl bg-clip-tex mt-1">
-                {(statistics.concurrencyFactor * 100).toFixed(1)}%
+        {/* Statistics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Energy Consumed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-card-foreground">
+                {statistics.totalEnergy.toFixed(1)}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  kWh
+                </span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Charging Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-card-foreground">
+                {filteredChargeEvents.length}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  events
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Peak Power & Concurrency
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold text-card-foreground">
+                {statistics.actualMaxPower} kW /{' '}
+                {statistics.theoreticalMaxPower} kW
+                <div className="text-2xl bg-clip-tex mt-1">
+                  {(statistics.concurrencyFactor * 100).toFixed(1)}%
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <PowerChart
+          startDate={filterRange.from}
+          simulationConfig={simulation.config}
+          simulationData={filteredTickData}
+          darkMode={theme === 'dark'}
+        />
+
+        <ChargingEventsChart
+          startDate={filterRange.from}
+          simulationConfig={simulation.config}
+          simulationData={filteredChargeEvents}
+          darkMode={theme === 'dark'}
+        />
       </div>
-
-      <PowerChart
-        startDate={filterRange.from}
-        simulationConfig={simulation.config}
-        simulationData={filteredTickData}
-        darkMode={theme === 'dark'}
-      />
-
-      <ChargingEventsChart
-        startDate={filterRange.from}
-        simulationConfig={simulation.config}
-        simulationData={filteredChargeEvents}
-        darkMode={theme === 'dark'}
-      />
-    </div>
+    </>
   );
 };
 

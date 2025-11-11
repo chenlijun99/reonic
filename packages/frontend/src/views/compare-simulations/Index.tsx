@@ -55,13 +55,15 @@ const Index = () => {
   }
 
   return (
-    <ConcurrencyFactorComparisonChart
-      simulationsData={simulations.map((sim) => [
-        sim!,
-        sim!.result!.perTickData,
-      ])}
-      darkMode={false}
-    />
+    <div className="p-8">
+      <ConcurrencyFactorComparisonChart
+        simulationsData={simulations.map((sim) => [
+          sim!,
+          sim!.result!.perTickData,
+        ])}
+        darkMode={false}
+      />
+    </div>
   );
 };
 

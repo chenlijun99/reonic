@@ -49,17 +49,7 @@ const Index = () => {
           )}
 
           <div className="flex-1 flex flex-col h-full overflow-hidden">
-            {/* Global Filters */}
-            <div className="p-4 border-b border-border bg-card shadow-card">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-card-foreground">
-                  Date Range:
-                </span>
-                <SimulationResultDateRangeFilter />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-8">
+            <div className="flex-1 overflow-auto">
               <Outlet />
             </div>
           </div>

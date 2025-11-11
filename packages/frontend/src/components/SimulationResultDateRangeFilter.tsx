@@ -98,6 +98,11 @@ export const SimulationResultDateRangeFilter = () => {
   };
 
   return (
-    <DateRangePicker value={dateRangeValue} onChange={handleDateRangeChange} />
+    <DateRangePicker
+      fixedYear={new Date().getFullYear()}
+      includeMonthSelection
+      value={dateRangeValue}
+      onChange={handleDateRangeChange}
+    />
   );
 };

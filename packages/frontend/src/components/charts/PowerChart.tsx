@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 
-import ReactECharts from 'echarts-for-react';
 import type { SeriesOption } from 'echarts';
 
 import type {
   SimulationConfig,
   SimulationResult,
 } from '@reonic/simulator-core/types';
+import { Echarts } from '@/components/charts/Echarts';
 import { Select, SelectItem } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -18,7 +18,6 @@ interface PowerChartProps {
   startDate: Date;
   simulationConfig: SimulationConfig;
   simulationData: SimulationResult['perTickData'];
-  darkMode: boolean;
 }
 
 type PlotGranularity = 'hourly' | 'daily' | 'weekly' | 'monthly';
@@ -27,7 +26,6 @@ export const PowerChart = ({
   startDate,
   simulationConfig,
   simulationData,
-  darkMode,
 }: PowerChartProps) => {
   const [plotGranularity, setPlotGranularity] =
     useState<PlotGranularity>('hourly');
@@ -80,17 +78,9 @@ export const PowerChart = ({
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-        borderColor: darkMode ? '#374151' : '#e5e7eb',
-        textStyle: {
-          color: darkMode ? '#f3f4f6' : '#111827',
-        },
       },
       legend: {
         data: seriesData.map((s) => s.name),
-        textStyle: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-        },
         type: 'scroll',
         bottom: 0,
       },
@@ -104,39 +94,19 @@ export const PowerChart = ({
       xAxis: {
         type: 'time',
         boundaryGap: false,
-        axisLine: {
-          lineStyle: {
-            color: darkMode ? '#374151' : '#e5e7eb',
-          },
-        },
-        axisLabel: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-        },
       },
       yAxis: {
         type: 'value',
         name: 'Power (kW)',
-        nameTextStyle: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-        },
-        axisLine: {
-          lineStyle: {
-            color: darkMode ? '#374151' : '#e5e7eb',
-          },
-        },
-        axisLabel: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-        },
         splitLine: {
           lineStyle: {
-            color: darkMode ? '#374151' : '#e5e7eb',
             type: 'dashed',
           },
         },
       },
       series: seriesData,
     };
-  }, [aggregatedData, simulationConfig.simulationGranularityMs, darkMode]);
+  }, [aggregatedData, simulationConfig.simulationGranularityMs]);
 
   return (
     <Card>
@@ -166,11 +136,7 @@ export const PowerChart = ({
         </div>
       </CardHeader>
       <CardContent>
-        <ReactECharts
-          option={chartOption}
-          style={{ height: '500px' }}
-          theme={/* theme */ 'default'}
-        />
+        <Echarts option={chartOption} style={{ height: '500px' }} />
       </CardContent>
     </Card>
   );

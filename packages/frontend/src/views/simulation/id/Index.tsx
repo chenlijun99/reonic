@@ -7,17 +7,15 @@ import {
 } from '@reonic/simulator-core/utils';
 import { useAppSelector } from '@/hooks';
 import type { Simulation } from '@/store/simulationSlice';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PowerChart } from '@/components/PowerChart';
-import { ChargingEventsChart } from '@/components/ChargingEventsChart';
+import { PowerChart } from '@/components/charts/PowerChart';
+import { ChargingEventsChart } from '@/components/charts/ChargingEventsChart';
 import {
   SimulationResultDateRangeFilter,
   useSimulationResultDateRangeFilter,
 } from '@/components/SimulationResultDateRangeFilter';
 
 const Index = () => {
-  const { theme } = useTheme();
   const { id } = useParams();
   const filterRange = useSimulationResultDateRangeFilter();
 
@@ -134,14 +132,12 @@ const Index = () => {
           startDate={filterRange.from}
           simulationConfig={simulation.config}
           simulationData={filteredTickData}
-          darkMode={theme === 'dark'}
         />
 
         <ChargingEventsChart
           startDate={filterRange.from}
           simulationConfig={simulation.config}
           simulationData={filteredChargeEvents}
-          darkMode={theme === 'dark'}
         />
       </div>
     </>

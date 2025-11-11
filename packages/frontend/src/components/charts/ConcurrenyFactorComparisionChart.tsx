@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import ReactECharts from 'echarts-for-react';
 
+import { Echarts } from '@/components/charts/Echarts';
 import type { SimulationResult } from '@reonic/simulator-core/types';
 import { computeStatistics } from '@reonic/simulator-core/utils';
 import type { Simulation } from '@/store/simulationSlice';
@@ -8,12 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ConcurrencyFactorComparisonChartProps {
   simulationsData: [Simulation, SimulationResult['perTickData']][];
-  darkMode: boolean;
 }
 
 export const ConcurrencyFactorComparisonChart = ({
   simulationsData,
-  darkMode,
 }: ConcurrencyFactorComparisonChartProps) => {
   const chartOption = useMemo(() => {
     const data = simulationsData.map((data) => {
@@ -24,14 +22,6 @@ export const ConcurrencyFactorComparisonChart = ({
       };
     });
 
-    const colors = [
-      'hsl(195, 85%, 45%)',
-      'hsl(180, 75%, 50%)',
-      'hsl(142, 76%, 36%)',
-      'hsl(38, 92%, 50%)',
-      'hsl(0, 72%, 51%)',
-    ];
-
     return {
       backgroundColor: 'transparent',
       tooltip: {
@@ -39,17 +29,9 @@ export const ConcurrencyFactorComparisonChart = ({
         axisPointer: {
           type: 'shadow',
         },
-        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-        borderColor: darkMode ? '#374151' : '#e5e7eb',
-        textStyle: {
-          color: darkMode ? '#f3f4f6' : '#111827',
-        },
       },
       legend: {
         data: data.map((d) => d.name),
-        textStyle: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-        },
         bottom: 0,
         type: 'scroll',
       },
@@ -64,46 +46,20 @@ export const ConcurrencyFactorComparisonChart = ({
         type: 'category',
         data: data.map((d) => d.name),
         axisLabel: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
           interval: 0,
           rotate: 30,
         },
-        axisLine: {
-          lineStyle: {
-            color: darkMode ? '#374151' : '#e5e7eb',
-          },
-        },
+        axisLine: {},
       },
       yAxis: {
         type: 'value',
         name: 'Concurrency Factor (%)',
-        nameTextStyle: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-        },
-        axisLine: {
-          lineStyle: {
-            color: darkMode ? '#374151' : '#e5e7eb',
-          },
-        },
-        axisLabel: {
-          color: darkMode ? '#9ca3af' : '#6b7280',
-          formatter: '{value}%',
-        },
-        splitLine: {
-          lineStyle: {
-            color: darkMode ? '#374151' : '#e5e7eb',
-            type: 'dashed',
-          },
-        },
       },
       series: [
         {
           type: 'bar',
-          data: data.map((d, i) => ({
+          data: data.map((d) => ({
             value: d.value,
-            itemStyle: {
-              color: colors[i % colors.length],
-            },
           })),
           barWidth: '60%',
         },
@@ -122,7 +78,7 @@ export const ConcurrencyFactorComparisonChart = ({
           </p>
         </CardHeader>
         <CardContent>
-          <ReactECharts option={chartOption} style={{ height: '500px' }} />
+          <Echarts option={chartOption} style={{ height: '500px' }} />
         </CardContent>
       </Card>
     </div>

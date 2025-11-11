@@ -61,7 +61,6 @@ const Index = () => {
           sim!,
           sim!.result!.perTickData,
         ])}
-        darkMode={false}
       />
     </div>
   );

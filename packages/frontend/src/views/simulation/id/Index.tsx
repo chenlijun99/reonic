@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useParams } from 'react-router';
 
 import {
@@ -46,15 +47,18 @@ const Index = () => {
     );
   }
 
-  const filteredTickData = filterTickData(
-    simulation.config,
-    result.perTickData,
-    filterRange,
+  const filteredTickData = useMemo(
+    () => filterTickData(simulation.config, result.perTickData, filterRange),
+    [simulation.config, result.perTickData, filterRange],
   );
-  const filteredChargeEvents = filterChargingEvents(
-    simulation.config,
-    result.chargingEvents,
-    filterRange,
+  const filteredChargeEvents = useMemo(
+    () =>
+      filterChargingEvents(
+        simulation.config,
+        result.chargingEvents,
+        filterRange,
+      ),
+    [simulation.config, result.chargingEvents, filterRange],
   );
 
   const statistics = computeStatistics(simulation.config, filteredTickData);

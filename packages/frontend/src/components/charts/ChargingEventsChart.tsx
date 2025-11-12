@@ -27,15 +27,17 @@ export const ChargingEventsChart = ({
   const [plotGranularity, setPlotGranularity] =
     useState<PlotGranularity>('daily');
 
-  const aggregatedData = aggregateChargingEvents(
-    simulationConfig,
-    simulationData,
-    startDate,
-    plotGranularity,
-    (chargingEvents) => {
-      return chargingEvents.length;
-    },
-  );
+  const aggregatedData = useMemo(() => {
+    return aggregateChargingEvents(
+      simulationConfig,
+      simulationData,
+      startDate,
+      plotGranularity,
+      (chargingEvents) => {
+        return chargingEvents.length;
+      },
+    );
+  }, [startDate, simulationConfig, simulationData, plotGranularity]);
 
   const chartOption = useMemo(() => {
     const seriesData: SeriesOption[] = [
@@ -78,14 +80,14 @@ export const ChargingEventsChart = ({
       },
       series: seriesData,
     };
-  }, [aggregatedData, simulationConfig.simulationGranularityMs]);
+  }, [aggregatedData]);
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>
-            Power Demand Over Time (Total & Individual Chargepoints)
+            Charging Events
           </CardTitle>
           <Select
             value={plotGranularity}

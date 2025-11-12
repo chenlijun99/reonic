@@ -30,22 +30,24 @@ export const PowerChart = ({
   const [plotGranularity, setPlotGranularity] =
     useState<PlotGranularity>('hourly');
 
-  const aggregatedData = aggregateTickData(
-    simulationConfig,
-    simulationData,
-    startDate,
-    plotGranularity,
-    (tickWindow) => {
-      // Aggregate by returning the average power demand of each chargepoint
-      const sum = tickWindow.reduce((acc, tickData) => {
-        tickData.powerDemandsPerChargepointKw.forEach((power, i) => {
-          acc[i] += power;
-        });
-        return acc;
-      }, new Array(tickWindow[0].powerDemandsPerChargepointKw.length).fill(0));
-      return sum.map((value) => value / tickWindow.length);
-    },
-  );
+  const aggregatedData = useMemo(() => {
+    return aggregateTickData(
+      simulationConfig,
+      simulationData,
+      startDate,
+      plotGranularity,
+      (tickWindow) => {
+        // Aggregate by returning the average power demand of each chargepoint
+        const sum = tickWindow.reduce((acc, tickData) => {
+          tickData.powerDemandsPerChargepointKw.forEach((power, i) => {
+            acc[i] += power;
+          });
+          return acc;
+        }, new Array(tickWindow[0].powerDemandsPerChargepointKw.length).fill(0));
+        return sum.map((value) => value / tickWindow.length);
+      },
+    );
+  }, [startDate, simulationConfig, simulationData, plotGranularity]);
 
   const chartOption = useMemo(() => {
     const seriesData: SeriesOption[] = [
@@ -106,7 +108,7 @@ export const PowerChart = ({
       },
       series: seriesData,
     };
-  }, [aggregatedData, simulationConfig.simulationGranularityMs]);
+  }, [aggregatedData]);
 
   return (
     <Card>

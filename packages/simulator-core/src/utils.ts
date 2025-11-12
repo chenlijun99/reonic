@@ -1,5 +1,7 @@
 import {
+  addMilliseconds,
   addDays,
+  min,
   addHours,
   addMonths,
   addWeeks,
@@ -8,6 +10,8 @@ import {
   startOfHour,
   startOfMonth,
   startOfWeek,
+  startOfYear,
+  differenceInMilliseconds,
 } from 'date-fns';
 
 import type {
@@ -80,8 +84,7 @@ export function computeStatistics(
 }
 
 function getMsFromStartOfYear(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  return date.getTime() - startOfYear.getTime();
+  return differenceInMilliseconds(date, startOfYear(date));
 }
 
 function clampIndex(index: number, max: number): number {
@@ -191,37 +194,33 @@ function getCalendarWindowStart(date: Date, type: CalendarUnit): Date {
     case 'monthly':
       return startOfMonth(date);
     case 'yearly':
-      return startOfMonth(date);
+      return startOfYear(date);
   }
 }
 
-// Helper function to get the exclusive end of a calendar window using date-fns
-function getCalendarWindowEnd(date: Date, type: CalendarUnit): Date {
-  const windowStart = getCalendarWindowStart(date, type);
-
+function addCalendarUnit(date: Date, type: CalendarUnit): Date {
   switch (type) {
     case 'hourly':
-      return addHours(windowStart, 1);
+      return addHours(date, 1);
     case 'daily':
-      return addDays(windowStart, 1);
+      return addDays(date, 1);
     case 'weekly':
-      return addWeeks(windowStart, 1);
+      return addWeeks(date, 1);
     case 'monthly':
-      return addMonths(windowStart, 1);
+      return addMonths(date, 1);
     case 'yearly':
-      return addYears(windowStart, 1);
+      return addYears(date, 1);
   }
 }
 
 /**
  * Aggregates simulation tick data over specified time windows using a provided callback function.
- * Aggregation can be based on fixed millisecond durations or calendar units ("hourly", "daily", "weekly", "monthly").
- * The `startDate` parameter establishes the real-world date and time corresponding to the first tick in `tickData`.
+ * Window definitions are provided by a generator, allowing for arbitrary and variable window sizes.
  *
  * @param config - The simulation configuration, primarily used for `simulationGranularityMs`.
  * @param tickData - An array of SimulationResultPerTickData, where each element corresponds to one simulation tick.
- * @param startDate - The Date object corresponding to the very first tick (tickData[0]).
- * @param aggregationWindow - The duration in milliseconds for each aggregation window OR a string representing a calendar unit.
+ * @param simulationStartDate - The Date object corresponding to the very first tick (tickData[0]) of the entire simulation.
+ * @param aggregationWindowGenerator - A generator that yields `WindowDescriptor` objects defining each aggregation window.
  * @param aggregateCallback - A function that takes an array of SimulationResultPerTickData (the window)
  *                            and returns a single aggregated result of type `T` for that window.
  * @returns An array of objects, each containing the `date` (start of the aggregation window) and the `data` (aggregated result of type `T`).
@@ -229,277 +228,249 @@ function getCalendarWindowEnd(date: Date, type: CalendarUnit): Date {
 export function aggregateTickData<T>(
   config: SimulationConfig,
   tickData: SimulationResult['perTickData'],
-  startDate: Date,
-  aggregationWindow: number | CalendarUnit,
+  aggregationWindowGenerator: AggregationWindowGenerator,
   aggregateCallback: (window: SimulationResult['perTickData']) => T,
 ): Array<{ date: Date; data: T }> {
-  // Changed return type
-  const granularityMs = config.simulationGranularityMs;
-  const aggregatedResults: Array<{ date: Date; data: T }> = []; // Changed array type
-  const totalTicks = tickData.length;
+  const { simulationGranularityMs } = config;
+  const results: Array<{ date: Date; data: T }> = [];
+  let currentOverallTickOffset = 0; // Tracks the current position in the overall `tickData` array
 
-  if (totalTicks === 0) {
-    return [];
-  }
-
-  // Calculate the exclusive end date of the entire simulation data
-  const simulationEndDate = new Date(
-    startDate.getTime() + totalTicks * granularityMs,
-  );
-
-  if (typeof aggregationWindow === 'number') {
-    // Fixed millisecond window aggregation
-    if (aggregationWindow <= 0) {
-      return [];
+  for (const { windowStartDate, durationMs } of aggregationWindowGenerator) {
+    if (currentOverallTickOffset >= tickData.length) {
+      break; // No more simulation data to process
     }
 
-    const ticksPerWindow = Math.ceil(aggregationWindow / granularityMs);
-    if (ticksPerWindow <= 0) {
-      return [];
-    }
+    // Calculate the number of ticks this window's duration spans
+    const ticksForThisWindow = Math.ceil(durationMs / simulationGranularityMs);
 
-    for (let i = 0; i < totalTicks; i += ticksPerWindow) {
-      const window = tickData.slice(i, i + ticksPerWindow);
-      if (window.length > 0) {
-        const windowStartDate = new Date(
-          startDate.getTime() + i * granularityMs,
-        );
-        aggregatedResults.push({
+    // If the window has a valid duration in terms of ticks
+    if (ticksForThisWindow > 0) {
+      // Determine the actual slice of tickData for this window
+      const windowSlice = tickData.slice(
+        currentOverallTickOffset,
+        currentOverallTickOffset + ticksForThisWindow,
+      );
+
+      // Only aggregate if there's actual data in the slice
+      if (windowSlice.length > 0) {
+        results.push({
           date: windowStartDate,
-          data: aggregateCallback(window),
+          data: aggregateCallback(windowSlice),
         });
       }
+
+      // Advance the overall tick offset by the number of ticks consumed by this window
+      currentOverallTickOffset += ticksForThisWindow;
     }
-  } else {
-    let currentWindowStart = getCalendarWindowStart(
-      startDate,
-      aggregationWindow,
+  }
+
+  return results;
+}
+
+export enum ChargingEventAggregationStrategy {
+  StartPoint = 'START_POINT', // Assigns event to the window its start time falls into
+  EndPoint = 'END_POINT', // Assigns event to the window its end time falls into
+  Overlap = 'OVERLAP', // Assigns event to all windows it overlaps with
+}
+
+/**
+ * Aggregates simulation charging events over specified time windows using a provided callback function.
+ * Window definitions are provided by a generator, allowing for arbitrary and variable window sizes.
+ *
+ * @param config - The simulation configuration, primarily used for `simulationGranularityMs`.
+ * @param chargingEvents - An array of ChargingEvent objects.
+ * @param simulationStartDate - The Date object corresponding to the very first tick (tick 0) of the simulation.
+ *                              This is crucial for mapping the date-based windows from the generator
+ *                              to the tick-based charging events.
+ * @param aggregationWindowGenerator - A generator that yields `WindowDescriptor` objects defining each aggregation window.
+ * @param aggregateCallback - A function that takes an array of ChargingEvent (the window)
+ *                            and returns a single aggregated result of type `T` for that window,
+ *                            along with a boolean indicating if aggregation should continue.
+ * @param aggregationStrategy - The strategy to use for attributing events to aggregation windows.
+ * @returns An array of objects, each containing the `date` (start of the aggregation window) and the `data` (aggregated result of type `T`).
+ */
+export function aggregateChargingEvents<T>(
+  config: SimulationConfig,
+  chargingEvents: SimulationResult['chargingEvents'],
+  simulationStartDate: Date,
+  aggregationWindowGenerator: AggregationWindowGenerator,
+  aggregateCallback: (window: ChargingEvent[]) => [T, boolean],
+  aggregationStrategy: ChargingEventAggregationStrategy = ChargingEventAggregationStrategy.Overlap,
+): Array<{ date: Date; data: T }> {
+  const granularityMs = config.simulationGranularityMs;
+  const aggregatedResults: Array<{ date: Date; data: T }> = [];
+
+  let currentEventPointer = 0;
+
+  for (const { windowStartDate, durationMs } of aggregationWindowGenerator) {
+    // Offset could be negative
+    const windowStartOffsetMs = differenceInMilliseconds(
+      windowStartDate,
+      simulationStartDate,
     );
+    const windowTickStart = Math.floor(windowStartOffsetMs / granularityMs);
 
-    while (currentWindowStart.getTime() < simulationEndDate.getTime()) {
-      let currentWindowEnd = getCalendarWindowEnd(
-        currentWindowStart,
-        aggregationWindow,
-      );
+    // The exclusive end of the current window in milliseconds from simulationStartDate.
+    const windowEndOffsetMs = windowStartOffsetMs + durationMs;
+    // The exclusive end tick of the current window.
+    const windowTickEnd = Math.ceil(windowEndOffsetMs / granularityMs);
 
-      // Ensure the window does not extend beyond the actual simulation data
-      currentWindowEnd = new Date(
-        Math.min(currentWindowEnd.getTime(), simulationEndDate.getTime()),
-      );
+    const eventsInWindow: ChargingEvent[] = [];
 
-      // Calculate the start and end indices in the tickData array for this window
-      // The start index corresponds to currentWindowStart relative to startDate
-      const sliceStartIndex = Math.max(
-        0,
-        Math.floor(
-          (currentWindowStart.getTime() - startDate.getTime()) / granularityMs,
-        ),
-      );
-      // The end index corresponds to currentWindowEnd relative to startDate (exclusive)
-      const sliceEndIndex = Math.min(
-        totalTicks,
-        Math.ceil(
-          (currentWindowEnd.getTime() - startDate.getTime()) / granularityMs,
-        ),
-      );
+    // Advance currentEventPointer past events that have completely ended before the current window starts.
+    // Since `chargingEvents` is assumed to be sorted by `endTick` (as per previous documentation),
+    // this efficiently skips irrelevant events for this window and future windows.
+    while (
+      currentEventPointer < chargingEvents.length &&
+      chargingEvents[currentEventPointer].endTick < windowTickStart
+    ) {
+      currentEventPointer++;
+    }
 
-      // If there's actual data within this calculated slice range
-      if (sliceStartIndex < sliceEndIndex) {
-        const window = tickData.slice(sliceStartIndex, sliceEndIndex);
-        if (window.length > 0) {
-          aggregatedResults.push({
-            date: currentWindowStart,
-            data: aggregateCallback(window),
-          });
-        }
+    // Iterate through remaining events from `currentEventPointer` to find those that belong to the current window.
+    for (let j = currentEventPointer; j < chargingEvents.length; j++) {
+      const event = chargingEvents[j];
+      let shouldInclude = false;
+      switch (aggregationStrategy) {
+        case ChargingEventAggregationStrategy.StartPoint:
+          // Include event if its `startTick` falls within the current window [windowTickStart, windowTickEnd)
+          if (
+            event.startTick >= windowTickStart &&
+            event.startTick < windowTickEnd
+          ) {
+            shouldInclude = true;
+          }
+          break;
+        case ChargingEventAggregationStrategy.EndPoint:
+          // Include event if its `endTick` falls within the current window [windowTickStart, windowTickEnd)
+          // Note: `event.endTick` is inclusive, `windowTickEnd` is exclusive.
+          if (
+            event.endTick >= windowTickStart &&
+            event.endTick < windowTickEnd
+          ) {
+            shouldInclude = true;
+          }
+          break;
+        case ChargingEventAggregationStrategy.Overlap:
+        default:
+          // Include event if it overlaps with the current window [windowTickStart, windowTickEnd)
+          if (
+            event.startTick < windowTickEnd &&
+            event.endTick >= windowTickStart
+          ) {
+            shouldInclude = true;
+          }
+          break;
       }
 
-      // Move to the start of the next calendar window
-      currentWindowStart = getCalendarWindowEnd(
-        currentWindowStart,
-        aggregationWindow,
-      );
+      if (shouldInclude) {
+        eventsInWindow.push(event);
+      }
+    }
+
+    const [data, toContinue] = aggregateCallback(eventsInWindow);
+    aggregatedResults.push({
+      date: windowStartDate,
+      data,
+    });
+    if (!toContinue) {
+      return aggregatedResults;
+    }
+    if (currentEventPointer === chargingEvents.length) {
+      break;
     }
   }
 
   return aggregatedResults;
 }
 
-/**
- * Aggregates simulation charging events over specified time windows using a provided callback function.
- * Aggregation can be based on fixed millisecond durations or calendar units ("hourly", "daily", "weekly", "monthly").
- * The `startDate` parameter establishes the real-world date and time corresponding to the first tick in the simulation.
- * The `chargingEvents` array is assumed to be sorted by `endTick` for efficient processing.
- *
- * @param config - The simulation configuration, primarily used for `simulationGranularityMs`.
- * @param chargingEvents - An array of ChargingEvent objects.
- * @param startDate - The Date object corresponding to the very first tick (tick 0) of the simulation.
- * @param aggregationWindow - The duration in milliseconds for each aggregation window OR a string representing a calendar unit.
- * @param aggregateCallback - A function that takes an array of ChargingEvent (the window)
- *                            and returns a single aggregated result of type `T` for that window.
- * @returns An array of objects, each containing the `date` (start of the aggregation window) and the `data` (aggregated result of type `T`).
- */
-export function aggregateChargingEvents<T>(
-  config: SimulationConfig,
-  chargingEvents: SimulationResult['chargingEvents'],
-  startDate: Date,
-  aggregationWindow: number | CalendarUnit,
-  aggregateCallback: (window: ChargingEvent[]) => T,
-): Array<{ date: Date; data: T }> {
-  const granularityMs = config.simulationGranularityMs;
-  const aggregatedResults: Array<{ date: Date; data: T }> = [];
+const MAX_DATE = new Date(8640000000000000);
 
-  if (chargingEvents.length === 0) {
-    return [];
+type WindowDescriptor = {
+  /** The start date of this aggregation window. This is used for the 'date' property in the result. */
+  windowStartDate: Date;
+  /** The duration of this aggregation window in milliseconds. */
+  durationMs: number;
+};
+
+type AggregationWindowGenerator = Generator<WindowDescriptor, void, undefined>;
+
+/**
+ * Generates window descriptors for fixed millisecond-duration windows.
+ *
+ * @param simulationStartDate The global start date of the simulation data.
+ * @param windowDurationMs The fixed duration of each window in milliseconds.
+ * @param simulationEndDate The global exclusive end date of the simulation data (optional).
+ * @returns A generator that yields { windowStartDate: Date, durationMs: number } for each fixed window.
+ */
+export function* fixedDurationWindowGenerator(
+  simulationStartDate: Date,
+  windowDurationMs: number,
+  simulationEndDate?: Date,
+): AggregationWindowGenerator {
+  if (windowDurationMs <= 0) {
+    throw new Error('Window duration must be positive.');
   }
 
-  // Determine the maximum tick covered by any charging event
-  // Since chargingEvents is sorted by endTick, the last event determines the max.
-  const maxEndTick = chargingEvents[chargingEvents.length - 1].endTick;
-  const simulationEndDate = new Date(
-    startDate.getTime() + (maxEndTick + 1) * granularityMs,
-  ); // +1 to make it exclusive end
+  let currentWindowStart = simulationStartDate;
+  const effectiveEndDate = simulationEndDate ?? MAX_DATE;
 
-  // Pointer to efficiently iterate through chargingEvents for each window
-  let currentEventPointer = 0;
+  while (currentWindowStart.getTime() < effectiveEndDate.getTime()) {
+    const actualWindowEnd = min([
+      addMilliseconds(currentWindowStart, windowDurationMs),
+      effectiveEndDate,
+    ]);
 
-  if (typeof aggregationWindow === 'number') {
-    // Fixed millisecond window aggregation
-    if (aggregationWindow <= 0) {
-      return [];
-    }
-
-    const ticksPerWindow = Math.ceil(aggregationWindow / granularityMs);
-    if (ticksPerWindow <= 0) {
-      return [];
-    }
-
-    // Iterate through simulation ticks from 0 up to maxEndTick in steps of ticksPerWindow
-    for (
-      let i = 0;
-      i <= maxEndTick || (i === 0 && maxEndTick === 0);
-      i += ticksPerWindow
-    ) {
-      const windowTickStart = i;
-      const windowTickEnd = i + ticksPerWindow; // Exclusive end
-
-      const windowStartDate = new Date(
-        startDate.getTime() + windowTickStart * granularityMs,
-      );
-
-      const eventsInWindow: ChargingEvent[] = [];
-
-      // Advance currentEventPointer to the first event that might overlap this window
-      while (
-        currentEventPointer < chargingEvents.length &&
-        chargingEvents[currentEventPointer].endTick < windowTickStart
-      ) {
-        currentEventPointer++;
-      }
-
-      // Collect all events that overlap with the current window
-      for (let j = currentEventPointer; j < chargingEvents.length; j++) {
-        const event = chargingEvents[j];
-        // If event starts after the window ends, then no more events in this window or subsequent ones (due to sorting)
-        if (event.startTick >= windowTickEnd) {
-          break;
-        }
-        // Check for overlap: event.startTick < windowTickEnd && event.endTick >= windowTickStart
-        // The condition event.endTick >= windowTickStart is implicitly handled by the outer while loop
-        // The condition event.startTick < windowTickEnd is handled by the break condition
-        eventsInWindow.push(event);
-      }
-
-      if (eventsInWindow.length > 0) {
-        aggregatedResults.push({
-          date: windowStartDate,
-          data: aggregateCallback(eventsInWindow),
-        });
-      } else if (
-        windowStartDate.getTime() < simulationEndDate.getTime() ||
-        (windowTickStart === 0 && maxEndTick === 0)
-      ) {
-        // Even if no events, push an entry for the time window if it's before the simulation end,
-        // or if it's the very first window of a simulation with no events.
-        // This ensures all time windows are represented if desired, even if empty.
-        // A consumer might want to see '0' for power for a given hour.
-        // This part is debatable based on exact requirements, currently it ensures a placeholder
-        // result if a window exists but has no events.
-        aggregatedResults.push({
-          date: windowStartDate,
-          data: aggregateCallback([]),
-        });
-      }
-    }
-  } else {
-    // Calendar-based aggregation ("hourly", "daily", "weekly", "monthly")
-    let currentWindowStart = getCalendarWindowStart(
-      startDate,
-      aggregationWindow,
+    const durationMs = differenceInMilliseconds(
+      actualWindowEnd,
+      currentWindowStart,
     );
 
-    while (currentWindowStart.getTime() < simulationEndDate.getTime()) {
-      let currentWindowEnd = getCalendarWindowEnd(
-        currentWindowStart,
-        aggregationWindow,
-      );
+    yield {
+      windowStartDate: currentWindowStart,
+      durationMs: durationMs,
+    };
 
-      // Ensure the window does not extend beyond the actual simulation data
-      currentWindowEnd = new Date(
-        Math.min(currentWindowEnd.getTime(), simulationEndDate.getTime()),
-      );
-
-      // Calculate the tick range for this calendar window
-      const windowTickStart = Math.max(
-        0,
-        Math.floor(
-          (currentWindowStart.getTime() - startDate.getTime()) / granularityMs,
-        ),
-      );
-      const windowTickEnd = Math.max(
-        0,
-        Math.ceil(
-          (currentWindowEnd.getTime() - startDate.getTime()) / granularityMs,
-        ),
-      );
-
-      const eventsInWindow: ChargingEvent[] = [];
-
-      if (windowTickStart < windowTickEnd) {
-        // Only process if the window has a valid tick duration
-        // Advance currentEventPointer for this calendar window
-        while (
-          currentEventPointer < chargingEvents.length &&
-          chargingEvents[currentEventPointer].endTick < windowTickStart
-        ) {
-          currentEventPointer++;
-        }
-
-        for (let j = currentEventPointer; j < chargingEvents.length; j++) {
-          const event = chargingEvents[j];
-          if (event.startTick >= windowTickEnd) {
-            break; // Event starts after window ends, and no further events will overlap
-          }
-          // The event overlaps if event.startTick < windowTickEnd && event.endTick >= windowTickStart
-          // The condition event.endTick >= windowTickStart is implicitly handled by the outer while loop
-          // The condition event.startTick < windowTickEnd is handled by the break condition
-          eventsInWindow.push(event);
-        }
-      }
-
-      // Add aggregated result, even if no events in window, to ensure all time periods are represented
-      aggregatedResults.push({
-        date: currentWindowStart,
-        data: aggregateCallback(eventsInWindow),
-      });
-
-      // Move to the start of the next calendar window
-      currentWindowStart = getCalendarWindowEnd(
-        currentWindowStart,
-        aggregationWindow,
-      );
-    }
+    currentWindowStart = actualWindowEnd;
   }
+}
 
-  return aggregatedResults;
+/**
+ * Abstract calendar window generator for common logic.
+ *
+ * @param simulationStartDate The global start date of the simulation data.
+ * @param unitType The calendar unit (e.g., 'monthly', 'hourly').
+ * @param simulationEndDate The global exclusive end date of the simulation data (optional).
+ * @returns A generator that yields { windowStartDate: Date, durationMs: number } for each calendar window.
+ */
+export function* calendarWindowGenerator(
+  simulationStartDate: Date,
+  unitType: CalendarUnit,
+  simulationEndDate?: Date,
+): AggregationWindowGenerator {
+  const effectiveEndDate = simulationEndDate ?? MAX_DATE;
+
+  let currentIterationPoint = getCalendarWindowStart(
+    simulationStartDate,
+    unitType,
+  );
+
+  while (currentIterationPoint.getTime() < effectiveEndDate.getTime()) {
+    const windowSliceEndDate = min([
+      addCalendarUnit(currentIterationPoint, unitType),
+      effectiveEndDate,
+    ]);
+
+    const durationMs = differenceInMilliseconds(
+      windowSliceEndDate,
+      currentIterationPoint,
+    );
+
+    yield {
+      windowStartDate: currentIterationPoint,
+      durationMs: durationMs,
+    };
+
+    currentIterationPoint = windowSliceEndDate;
+  }
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
+import { endOfDay, startOfDay, startOfYear } from 'date-fns';
 
 import {
   filterTickData,
@@ -11,8 +12,6 @@ import type { Simulation } from '@/store/simulationSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PowerChart } from '@/components/charts/PowerChart';
 import { ChargingEventsChart } from '@/components/charts/ChargingEventsChart';
-import { DateRangePicker } from 'react-aria-components';
-import { endOfDay, startOfDay } from 'date-fns';
 import { SimulationResultDateRangeFilter } from '@/components/SimulationResultDateRangeFilter';
 
 const Index = () => {
@@ -146,7 +145,9 @@ const Index = () => {
         />
 
         <ChargingEventsChart
-          startDate={filterDateRange.from}
+          simulationStartDate={startOfYear(filterDateRange.from)}
+          chargingEventsFilterStartDate={filterDateRange.from}
+          chargingEventsFilterEndDate={filterDateRange.to}
           simulationConfig={simulation.config}
           simulationData={filteredChargeEvents}
         />

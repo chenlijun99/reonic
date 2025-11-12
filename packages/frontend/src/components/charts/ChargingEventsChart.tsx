@@ -9,18 +9,25 @@ import type {
 } from '@reonic/simulator-core/types';
 import { Select, SelectItem } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { aggregateChargingEvents } from '@reonic/simulator-core/utils';
+import {
+  aggregateChargingEvents,
+  calendarWindowGenerator,
+} from '@reonic/simulator-core/utils';
 
 interface ChargingEventsChartProps {
-  startDate: Date;
   simulationConfig: SimulationConfig;
+  simulationStartDate: Date;
+  chargingEventsFilterStartDate: Date;
+  chargingEventsFilterEndDate: Date;
   simulationData: SimulationResult['chargingEvents'];
 }
 
 type PlotGranularity = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export const ChargingEventsChart = ({
-  startDate,
+  simulationStartDate,
+  chargingEventsFilterStartDate,
+  chargingEventsFilterEndDate,
   simulationConfig,
   simulationData,
 }: ChargingEventsChartProps) => {
@@ -31,13 +38,24 @@ export const ChargingEventsChart = ({
     return aggregateChargingEvents(
       simulationConfig,
       simulationData,
-      startDate,
-      plotGranularity,
+      simulationStartDate,
+      calendarWindowGenerator(
+        chargingEventsFilterStartDate,
+        plotGranularity,
+        chargingEventsFilterEndDate,
+      ),
       (chargingEvents) => {
-        return chargingEvents.length;
+        return [chargingEvents.length, true];
       },
     );
-  }, [startDate, simulationConfig, simulationData, plotGranularity]);
+  }, [
+    simulationStartDate,
+    chargingEventsFilterStartDate,
+    chargingEventsFilterEndDate,
+    plotGranularity,
+    simulationConfig,
+    simulationData,
+  ]);
 
   const chartOption = useMemo(() => {
     const seriesData: SeriesOption[] = [
@@ -86,9 +104,7 @@ export const ChargingEventsChart = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>
-            Charging Events
-          </CardTitle>
+          <CardTitle>Charging Events</CardTitle>
           <Select
             value={plotGranularity}
             onChange={(key) => setPlotGranularity(key as PlotGranularity)}

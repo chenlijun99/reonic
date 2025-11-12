@@ -11,6 +11,7 @@ import { Select, SelectItem } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   aggregateTickData,
+  calendarWindowGenerator,
   getChargepointCount,
 } from '@reonic/simulator-core/utils';
 
@@ -34,8 +35,7 @@ export const PowerChart = ({
     return aggregateTickData(
       simulationConfig,
       simulationData,
-      startDate,
-      plotGranularity,
+      calendarWindowGenerator(startDate, plotGranularity),
       (tickWindow) => {
         // Aggregate by returning the average power demand of each chargepoint
         const sum = tickWindow.reduce((acc, tickData) => {

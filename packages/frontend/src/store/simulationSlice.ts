@@ -136,7 +136,6 @@ export const simulationSlice = createSlice({
         const simulationId = action.meta.arg;
         if (state.simulations[simulationId]) {
           state.simulations[simulationId].running = true;
-          state.simulations[simulationId].result = undefined;
         }
       })
       .addCase(runSimulation.fulfilled, (state, action) => {

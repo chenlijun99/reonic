@@ -35,9 +35,13 @@ export const SimulationResultDateRangeFilter = ({
     end: parseDate(format(value.to, ISO8601_DATE_FORMAT)),
   };
 
+  if (value.from.getFullYear() !== value.to.getFullYear()) {
+    throw new Error('Only date selection within a single year is supported');
+  }
+
   return (
     <DateRangePicker
-      fixedYear={new Date().getFullYear()}
+      fixedYear={value.from.getFullYear()}
       includeMonthSelection
       value={dateRangeValue}
       onChange={handleDateRangeChange}

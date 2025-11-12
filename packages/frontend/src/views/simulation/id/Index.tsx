@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 
 import {
@@ -11,14 +11,17 @@ import type { Simulation } from '@/store/simulationSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PowerChart } from '@/components/charts/PowerChart';
 import { ChargingEventsChart } from '@/components/charts/ChargingEventsChart';
-import {
-  SimulationResultDateRangeFilter,
-  useSimulationResultDateRangeFilter,
-} from '@/components/SimulationResultDateRangeFilter';
+import { DateRangePicker } from 'react-aria-components';
+import { endOfDay, startOfDay } from 'date-fns';
+import { SimulationResultDateRangeFilter } from '@/components/SimulationResultDateRangeFilter';
 
 const Index = () => {
   const { id } = useParams();
-  const filterRange = useSimulationResultDateRangeFilter();
+
+  const [filterDateRange, setFilterDateRange] = useState({
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date()),
+  });
 
   const simulation: Simulation | undefined = useAppSelector(
     (state) => state.simulation.simulations[id!],
@@ -48,17 +51,18 @@ const Index = () => {
   }
 
   const filteredTickData = useMemo(
-    () => filterTickData(simulation.config, result.perTickData, filterRange),
-    [simulation.config, result.perTickData, filterRange],
+    () =>
+      filterTickData(simulation.config, result.perTickData, filterDateRange),
+    [simulation.config, result.perTickData, filterDateRange],
   );
   const filteredChargeEvents = useMemo(
     () =>
       filterChargingEvents(
         simulation.config,
         result.chargingEvents,
-        filterRange,
+        filterDateRange,
       ),
-    [simulation.config, result.chargingEvents, filterRange],
+    [simulation.config, result.chargingEvents, filterDateRange],
   );
 
   const statistics = computeStatistics(simulation.config, filteredTickData);
@@ -70,7 +74,10 @@ const Index = () => {
           <span className="text-sm font-medium text-card-foreground">
             Date Range:
           </span>
-          <SimulationResultDateRangeFilter />
+          <SimulationResultDateRangeFilter
+            value={filterDateRange}
+            onChange={setFilterDateRange}
+          />
         </div>
       </div>
       <div className="space-y-6 p-8">
@@ -133,13 +140,13 @@ const Index = () => {
         </div>
 
         <PowerChart
-          startDate={filterRange.from}
+          startDate={filterDateRange.from}
           simulationConfig={simulation.config}
           simulationData={filteredTickData}
         />
 
         <ChargingEventsChart
-          startDate={filterRange.from}
+          startDate={filterDateRange.from}
           simulationConfig={simulation.config}
           simulationData={filteredChargeEvents}
         />

@@ -54,6 +54,9 @@ export const PowerChart = ({
       {
         name: 'Total Power',
         type: 'line',
+        sampling: 'lttb',
+        symbol: aggregatedData.length > 100 ? 'none' : undefined,
+        symbolSize: 12,
         data: aggregatedData.map((data) => [
           +data.date,
           data.data.reduce((acc, data) => {
@@ -70,6 +73,8 @@ export const PowerChart = ({
       seriesData.push({
         name: `cp-${i}`,
         type: 'line',
+        sampling: 'lttb',
+        symbol: aggregatedData.length > 100 ? 'none' : undefined,
         data: aggregatedData.map((data) => [data.date, data.data[i]]),
         lineStyle: { width: 1 },
         smooth: true,

@@ -232,7 +232,7 @@ export const SimulationConfigurationEditor = ({
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        randomSeed: parseInt(e.target.value),
+                        seed: parseInt(e.target.value),
                       }))
                     }
                   />

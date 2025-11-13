@@ -38,4 +38,3 @@ $ pnpm run dev
 ## Known issues
 
 * Light/dark mode switch causes some UI lag due to the echarts chart being disposed and recreated with the new theme. ECharts 6 has introduced support for [Dynamic Theme Switching](https://echarts.apache.org/handbook/en/basics/release-note/v6-feature/#2.-dynamic-theme-switching), but the react echarts utility wrapper library we use doesn't support it yet. It shouldn't hard to contribute support back to add this feature.
-* Vertical scrollbar on chrome. Doesn't show up in Firefox.

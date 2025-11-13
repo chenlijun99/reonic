@@ -16,7 +16,15 @@ const Checkbox = React.forwardRef<HTMLLabelElement, CheckboxProps>(
     return (
       <AriaCheckbox
         ref={ref}
-        className={cn('group flex items-center gap-2', className)}
+        className={cn(
+          'group flex items-center gap-2',
+          // Oh, all the tears I have shed for this single line.
+          // See https://github.com/adobe/react-spectrum/issues/5094
+          // And the official documentation
+          // https://react-spectrum.adobe.com/react-aria/VisuallyHidden.html#gotchas
+          'relative',
+          className,
+        )}
         {...props}
       >
         {({ isSelected }) => (
